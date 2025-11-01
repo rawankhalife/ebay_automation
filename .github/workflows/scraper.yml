@@ -1,33 +1,37 @@
-name: eBay Tech Deals Scraper
+name: Ebay Data Scraper
 
 on:
   schedule:
-    - cron: "0 */3 * * *"
-  workflow_dispatch:
+    - cron: "0 */3 * * *" 
+  workflow_dispatch:        # Allows manual triggering
 
 jobs:
-  run-scraper:
+  scrape-bitcoin:
     runs-on: ubuntu-latest
+    env:
+      TZ: America/New_York  # Set your local timezone if needed
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: '3.11'
 
-      - name: Install deps
+      - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install selenium webdriver-manager
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser
+          pip install selenium pandas webdriver-manager fake-useragent
 
-      - name: Run scraper
+      - name: Run Selenium scraper
         run: python scraper.py
 
-      - name: Commit & push CSV
+      - name: Commit and Push updated CSV
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git add bitcoin_hourly_data.csv
-          git commit -m "Updated Bitcoin data (10-min intervals)"
+          git add ebay_tech_deals.csv
+          git commit -m "Updated Ebay data (3-hour intervals)"
           git push
