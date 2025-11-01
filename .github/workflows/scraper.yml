@@ -1,5 +1,7 @@
 name: Ebay Data Scraper
 
+permissions:
+  contents: write
 on:
   schedule:
     - cron: "0 */3 * * *"  # Runs every 3 hours
