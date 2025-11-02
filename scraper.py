@@ -79,7 +79,6 @@ def main():
         item_url = safe_href(t, "a.dne-itemtile-title, a")
         product_data.append([title, price, original_price, item_url])
 
-    ts = datetime.now().isoformat(timespec="seconds")
     rows = []
 
     # Second: visit each URL and grab shipping
@@ -93,6 +92,8 @@ def main():
         except Exception:
             shipping = "Shipping info unavailable"
 
+        ts = datetime.now().isoformat(timespec="seconds")
+        
         rows.append([ts, title, price, original_price, shipping, item_url])
         print(f"[{i}/{len(product_data)}] Scraped: {title[:60]}")
         time.sleep(1.0)
