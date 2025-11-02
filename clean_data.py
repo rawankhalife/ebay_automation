@@ -1,6 +1,6 @@
-# clean_data.py
 import pandas as pd
 import numpy as np
+import re
 
 RAW = "ebay_tech_deals.csv"
 OUT = "cleaned_ebay_deals.csv"
@@ -8,38 +8,49 @@ OUT = "cleaned_ebay_deals.csv"
 def cleanse_money(s):
     if pd.isna(s): return np.nan
     s = str(s)
-    # keep only the first money-like token if multiple appear
-    s = s.split("\n")[0]
-    s = s.replace("US", "").replace("$", "").replace(",", "").strip()
-    return s if s else np.nan
+    match = re.search(r"\d+(?:\.\d+)?", s.replace(",", ""))
+    return float(match.group()) if match else np.nan
 
 def main():
     df = pd.read_csv(RAW, dtype=str)
-    for col in ["price","original_price","shipping","title","item_url","timestamp"]:
-        if col not in df.columns: df[col] = ""
 
+    # Normalize and check columns
+    df.columns = df.columns.str.strip().str.lower()
+    for col in ["price","original_price","shipping","title","item_url","timestamp"]:
+        if col not in df.columns:
+            df[col] = ""
+
+    # Drop N/A or empty product entries
+    df = df.dropna(subset=["title"])
+    df = df[df["title"].str.strip().str.lower() != "n/a"]
+    df = df[df["item_url"].str.contains("/itm/")]
+
+    # Clean price fields
     df["price"] = df["price"].map(cleanse_money)
     df["original_price"] = df["original_price"].map(cleanse_money)
 
-    # If original_price missing -> use price
-    df["original_price"] = np.where(df["original_price"].isna() | (df["original_price"]==""), df["price"], df["original_price"])
+    # Fill missing original price
+    df["original_price"] = np.where(
+        df["original_price"].isna() | (df["original_price"] == 0),
+        df["price"],
+        df["original_price"]
+    )
 
-    # Shipping defaults
+    # Shipping info
     df["shipping"] = df["shipping"].fillna("").astype(str).str.strip()
-    df["shipping"] = df["shipping"].replace({"": "Shipping info unavailable", "N/A": "Shipping info unavailable"})
-
-    # To numeric
-    df["price"] = pd.to_numeric(df["price"], errors="coerce")
-    df["original_price"] = pd.to_numeric(df["original_price"], errors="coerce")
+    df["shipping"] = df["shipping"].replace(
+        {"": "Shipping info unavailable", "N/A": "Shipping info unavailable"}
+    )
 
     # Discount %
     df["discount_percentage"] = np.where(
-        df["original_price"]>0,
+        df["original_price"] > 0,
         np.round((df["original_price"] - df["price"]) / df["original_price"] * 100.0, 2),
         np.nan
     )
 
     df.to_csv(OUT, index=False)
+    print(f"✅ Cleaned data saved to {OUT}. Rows kept: {len(df)}")
 
 if __name__ == "__main__":
     main()
